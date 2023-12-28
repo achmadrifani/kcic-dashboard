@@ -4,8 +4,50 @@ import folium
 import pandas as pd
 import geopandas as gpd
 from datetime import datetime, timedelta
+import os
+import requests
 
 st.set_page_config(layout="wide")
+NDF_FOLDER = "src/ndf"
+
+def download_ndf_kecamatan(province):
+    """Mengambil data ndf dan menyimpan kedalam local untuk efisiensi request ke server"""
+    url = f"http://202.90.198.220/MEWS/CSV/kecamatanforecast-{province}.csv"
+
+    if not os.path.exists(NDF_FOLDER):
+        os.makedirs(NDF_FOLDER)
+
+    file_name = os.path.join(NDF_FOLDER, f"kecamatanforecast-{province}.csv")
+
+    response = requests.get(url)
+    if response.status_code == 200:
+        with open(file_name, 'wb') as file:
+            file.write(response.content)
+        print(f"Data for {province} downloaded to {file_name}")
+    else:
+        print(f"Failed downloading data {province}. Status code: {response.status_code}")
+    return file_name
+
+def merge_ndf_kecamatan():
+    dfs = []
+    for province in ['Jakarta', 'Jawabarat']:
+        fname = download_ndf_kecamatan(province)
+        df = pd.read_csv(fname, sep=";",
+                         names=["AREA_ID", "DATE", "TMIN", "TMAX", "HUMIN", "HUMAX", "HU", "T", "WEATHER", "WD", "WS"])
+        dfs.append(df)
+    df_ndf = pd.concat(dfs, ignore_index=True)
+    df_sta = pd.read_csv("src/stasiun_kcic.csv")
+
+    dfs = []
+    for id, name in zip(df_sta['id_ndf'], df_sta['name_station']):
+        df = df_ndf.loc[df_ndf['AREA_ID'] == id]
+        df["STATION"] = name
+        print(df)
+        df = df[['STATION', 'DATE', 'TMIN', 'TMAX', 'HUMIN', 'HUMAX', 'HU', 'T', 'WEATHER', 'WD', 'WS']]
+        dfs.append(df)
+    df_final = pd.concat(dfs, ignore_index=True)
+    df_final.to_csv("kcic_forecast.csv", sep=";", index=False)
+    return df_final
 
 def load_forecast_data():
     df = pd.read_csv("kcic_forecast.csv", sep=";", parse_dates=["DATE"])
@@ -85,7 +127,7 @@ wind_caption_dict = {"N":"Utara",
                      "NW":"Barat Laut"}
 
 st.header("KCIC Weather Forecast Dashboard")
-
+merge_ndf_kecamatan()
 df = load_forecast_data()
 gdf_track = gpd.read_file('src/kcic.geojson')
 df_sta = pd.read_csv("src/stasiun_kcic.csv")
@@ -132,4 +174,3 @@ if station_name:
             col.markdown(markdown_content,unsafe_allow_html=True)
 else:
     st.write("## Click on a station to see its detailed forecast")
-
