@@ -36,14 +36,15 @@ def merge_ndf_kecamatan():
                          names=["AREA_ID", "DATE", "TMIN", "TMAX", "HUMIN", "HUMAX", "HU", "T", "WEATHER", "WD", "WS"])
         dfs.append(df)
     df_ndf = pd.concat(dfs, ignore_index=True)
-    df_sta = pd.read_csv("src/stasiun_kcic.csv")
+    df_sta = pd.read_csv("src/track_ndf.csv")
 
     dfs = []
-    for id, name in zip(df_sta['id_ndf'], df_sta['name_station']):
+    for id, name, lon, lat in zip(df_sta['id'], df_sta['name'],df_sta['lon'],df_sta['lat']):
         df = df_ndf.loc[df_ndf['AREA_ID'] == id]
-        df["STATION"] = name
-        print(df)
-        df = df[['STATION', 'DATE', 'TMIN', 'TMAX', 'HUMIN', 'HUMAX', 'HU', 'T', 'WEATHER', 'WD', 'WS']]
+        df["NAME"] = name
+        df["LON"] = lon
+        df["LAT"] = lat
+        df = df[['NAME', 'LON', 'LAT', 'DATE', 'TMIN', 'TMAX', 'HUMIN', 'HUMAX', 'HU', 'T', 'WEATHER', 'WD', 'WS']]
         dfs.append(df)
     df_final = pd.concat(dfs, ignore_index=True)
     df_final.to_csv("kcic_forecast.csv", sep=";", index=False)
@@ -55,7 +56,7 @@ def load_forecast_data():
 
 def get_nearest_forecast(df):
     holder = []
-    dfg = df.groupby("STATION")
+    dfg = df.groupby("NAME")
     now = datetime.utcnow()
 
     for key, group_df in dfg:
@@ -74,15 +75,14 @@ def get_nearest_forecast(df):
 def get_all_forecast(station_name,df):
     now = datetime.utcnow()
     df = df[df["DATE"] > now]
-    df = df.loc[df["STATION"]==station_name]
+    df = df.loc[df["NAME"]==station_name]
     return df
 
 def create_popup(row,df_fct):
-    station = row["name_station"]
-    df_fct_sta = df_fct[df_fct["STATION"]==station]
-    print(wx_icon_dict[df_fct_sta['WEATHER'].iloc[0]])
+    station = row["NAME"]
+    df_fct_sta = df_fct[df_fct["NAME"]==station]
     popup_content = f"""
-            <strong>{df_fct_sta['STATION'].iloc[0]}</strong><br>
+            <strong>{df_fct_sta['NAME'].iloc[0]}</strong><br>
             <strong>{(df_fct_sta['DATE'].iloc[0]+timedelta(hours=7)).strftime("%d %b %Y %H:%M WIB")}</strong><br>
             <img src="{wx_icon_dict[df_fct_sta['WEATHER'].iloc[0]]}" alt="Weather Icon" style="width:40px;height:40px;"><br>
             {wx_caption_dict[df_fct_sta['WEATHER'].iloc[0]]}<br>
@@ -92,6 +92,9 @@ def create_popup(row,df_fct):
             Kecepatan Angin: {df_fct_sta['WS'].iloc[0]} km/h
         """
     return popup_content
+
+def get_end_point_coordinates(geom):
+    return geom.coords[-1]
 
 wx_icon_dict = {0:"https://www.bmkg.go.id/asset/img/weather_icon/ID/cerah-am.png",
                 1:"https://www.bmkg.go.id/asset/img/weather_icon/ID/cerah%20berawan-am.png",
@@ -130,7 +133,9 @@ st.header("KCIC Weather Forecast Dashboard")
 merge_ndf_kecamatan()
 df = load_forecast_data()
 gdf_track = gpd.read_file('src/kcic.geojson')
-df_sta = pd.read_csv("src/stasiun_kcic.csv")
+df_sta = pd.read_csv("src/track_ndf.csv")
+
+# Make centerpoint from dissolved track geometry
 center = gdf_track.dissolve().centroid
 center_lon = center.geometry.x
 center_lat = center.geometry.y
@@ -138,20 +143,31 @@ center_lat = center.geometry.y
 m = folium.Map(location=[center_lat, center_lon], zoom_start=10)
 folium.GeoJson(gdf_track).add_to(m)
 df_fct = get_nearest_forecast(df)
-for index,row in df_sta.iterrows():
-    stat_icon = folium.features.CustomIcon('src/railway-station.png', icon_size=(30, 30))
+
+
+# for index,row in df_sta.iterrows():
+#     stat_icon = folium.features.CustomIcon('src/railway-station.png', icon_size=(30, 30))
+#     popup_content = create_popup(row,df_fct)
+#     folium.Marker([row["lat"],row["lon"]],
+#                   popup = folium.Popup(popup_content, max_width=300),
+#                   icon=stat_icon).add_to(m)
+
+for index,row in df_fct.iterrows():
     popup_content = create_popup(row,df_fct)
-    tooltip_content = f"{row['name_station']}"
-    folium.Marker([row["lat"],row["lon"]],
-                  popup = folium.Popup(popup_content, max_width=300),
-                  icon=stat_icon).add_to(m)
+    if row["NAME"].startswith("Stasiun"):
+        tr_icon = folium.features.CustomIcon('src/railway-station.png', icon_size=(40, 40))
+    else:
+        tr_icon = folium.CustomIcon(icon_image=f"{wx_icon_dict[row['WEATHER']]}", icon_size=(40, 40))
+    folium.Marker([row['LAT'],row['LON']],
+                  popup=folium.Popup(popup_content, max_width=300),
+                  icon=tr_icon).add_to(m)
 
 st_data = st_folium(m,use_container_width=True)
 station_name = st_data['last_object_clicked_popup']
 
 if station_name:
-    station_name = station_name.split()
-    station_name = f"{station_name[0]} {station_name[1]}"
+    station_name = station_name.split('\n')
+    station_name = f"{station_name[0]}"
     st.write(f"## Detailed Forecast for {station_name}")
     df_all_fct = get_all_forecast(station_name,df)
     df_grp = df_all_fct.groupby(by=df["DATE"].dt.date)
