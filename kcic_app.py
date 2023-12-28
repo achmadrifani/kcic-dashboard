@@ -209,4 +209,4 @@ if station_name:
                     """
             col.markdown(markdown_content, unsafe_allow_html=True)
 else:
-    st.write("## Click on a station to see its detailed forecast")
+    st.write("## Click on a station to see detailed forecast")
