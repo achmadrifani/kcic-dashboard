@@ -81,7 +81,8 @@ df_ndf = load_forecast_data(ndf_local_path)
 gdf_track = gpd.read_file('src/kcic.geojson')
 df_sta = pd.read_csv("src/track_ndf.csv")
 
-m = folium.Map(location=[-6.579044952293415, 107.33359554188215], zoom_start=10)
+m = folium.Map(location=[-6.579044952293415, 107.33359554188215], zoom_start=10, max_zoom=12, min_zoom=10,
+               max_bounds=True, min_lat=-7.05, max_lat=-5.95, min_lon=106.5, max_lon=108.5)
 folium.GeoJson(gdf_track).add_to(m)
 
 for index, row in df_pwx.iterrows():
@@ -121,15 +122,17 @@ if station_name:
 
     for tab, tanggal in zip(tabs, tanggal_list):
         df_tgl = df_grp.get_group(tanggal)
-        cols = tab.columns(8)#df_tgl.shape[0])
+        cols = tab.columns(8)
         for col, (index, data) in zip(cols, df_tgl.iterrows()):
             markdown_content = f"""
+                        <div style="background-color: lightblue; padding: 10px; border-radius: 10px;">
                         <strong>{(data["DATE"]).strftime("%H:%M WIB")}</strong><br>
                         <img src="{wx_icon_dict[data['WEATHER']]}" alt="Weather Icon" style="width:50px;height:50px;"><br>
                         {wx_caption_dict[data["WEATHER"]]}<br>
                         Suhu: {data['T']} °C<br>
                         Kelembapan: {data['HU']} %<br>
-                        Angin: {wind_caption_dict[data['WD']]} \n{data['WS']}<br>
+                        Angin: {wind_caption_dict[data['WD']]} \n{data['WS']} km/jam<br>
+                        </div>
                     """
             col.markdown(markdown_content, unsafe_allow_html=True)
 else:
