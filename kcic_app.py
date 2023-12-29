@@ -71,6 +71,7 @@ def merge_ndf_kecamatan():
         df = df[['NAME', 'LON', 'LAT', 'DATE', 'TMIN', 'TMAX', 'HUMIN', 'HUMAX', 'HU', 'T', 'WEATHER', 'WD', 'WS']]
         dfs.append(df)
     df_final = pd.concat(dfs, ignore_index=True)
+    df_final['DATE'] = df_final['DATE'].astype('datetime64[ns]')
     df_final.to_csv("kcic_forecast.csv", sep=";", index=False)
     return df_final
 
@@ -93,6 +94,7 @@ def merge_presentwx():
         df = df[['NAME', 'LON', 'LAT', 'DATE', 'TMIN', 'TMAX', 'HUMIN', 'HUMAX', 'HU', 'T', 'WEATHER', 'WD', 'WS']]
         dfs.append(df)
     df_final = pd.concat(dfs, ignore_index=True)
+    df_final['DATE'] = df_final['DATE'].astype('datetime64[ns]')
     df_final.to_csv("kcic_presentwx.csv", sep=";", index=False)
     return df_final
 
@@ -104,25 +106,6 @@ def load_forecast_data():
 def load_presentwx_data():
     df = pd.read_csv("kcic_presentwx.csv", sep=";", parse_dates=["DATE"])
     return df
-
-def get_nearest_forecast(df):
-    holder = []
-    dfg = df.groupby("NAME")
-    now = datetime.utcnow()
-
-    for key, group_df in dfg:
-        # Filter data untuk stasiun tertentu yang waktu prediksinya setelah waktu sekarang
-        filtered_df = group_df[group_df["DATE"] > now]
-
-        if not filtered_df.empty:
-            # Pilih baris pertama (waktu terdekat)
-            nearest_row = filtered_df.iloc[0]
-            holder.append(nearest_row)
-
-    # Gabungkan DataFrame yang dihasilkan dari setiap stasiun
-    df_new = pd.DataFrame(holder)
-    return df_new
-
 
 def get_all_forecast(station_name, df):
     now = datetime.utcnow()
@@ -149,17 +132,16 @@ def create_popup(row, df_fct):
 
 
 st.header("KCIC Weather Forecast Dashboard")
-merge_ndf_kecamatan()
-merge_presentwx()
+df = merge_ndf_kecamatan()
+df_pwx = merge_presentwx()
 
-df_pwx = load_presentwx_data()
-df = load_forecast_data()
+# df_pwx = load_presentwx_data()
+# df = load_forecast_data()
 gdf_track = gpd.read_file('src/kcic.geojson')
 df_sta = pd.read_csv("src/track_ndf.csv")
 
 m = folium.Map(location=[-6.579044952293415, 107.33359554188215], zoom_start=10)
 folium.GeoJson(gdf_track).add_to(m)
-df_fct = get_nearest_forecast(df)
 
 for index, row in df_pwx.iterrows():
     popup_content = create_popup(row, df_pwx)
@@ -187,7 +169,7 @@ if station_name:
     st.write(f"## Detailed Forecast for {station_name}")
     df_all_fct = get_all_forecast(station_name, df)
     df_pwx = df_pwx.loc[df_pwx["NAME"] == station_name]
-    df_all_fct = pd.concat([df_pwx, df_all_fct], ignore_index=True)
+    df_all_fct = pd.concat([df_pwx, df_all_fct])
     df_all_fct = df_all_fct.sort_values(by=['DATE'])
     df_all_fct['DATE'] = df_all_fct["DATE"] + timedelta(hours=7)
     df_grp = df_all_fct.groupby(by=df_all_fct["DATE"].dt.date)
