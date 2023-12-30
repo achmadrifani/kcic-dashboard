@@ -70,6 +70,18 @@ def create_popup(row, df_fct):
 def keep_first(series):
     return series.iloc[0]
 
+def make_warning(df_stp):
+    rain = df_stp.loc[df_stp["WEATHER"] > 4]
+    if rain.empty:
+        warning_text = "⚠️ No rain expected"
+    else:
+        rain_start = rain["DATE"].iloc[0]
+        rain_end = rain["DATE"].iloc[-1]
+        rain_duration = rain_end - rain_start
+        wx_max = rain["WEATHER"].max()
+        warning_text = f"""⚠️ Expect {wx_caption_dict[wx_max]} in {rain_start.strftime("%H:%M WIB")}"""
+    return warning_text
+
 st.header("KCIC Weather Forecast Dashboard")
 
 pwx_local_path, stp_local_path, ndf_local_path = download_data()
@@ -102,18 +114,6 @@ for index, row in df_pwx.iterrows():
 
 st_data = st_folium(m, use_container_width=True)
 station_name = st_data['last_object_clicked_popup']
-
-def make_warning(df_stp):
-    rain = df_stp.loc[df_stp["WEATHER"] > 4]
-    if rain.empty:
-        warning_text = "⚠️ No rain expected"
-    else:
-        rain_start = rain["DATE"].iloc[0]
-        rain_end = rain["DATE"].iloc[-1]
-        rain_duration = rain_end - rain_start
-        wx_max = rain["WEATHER"].max()
-        warning_text = f"""⚠️ Expect {wx_caption_dict[wx_max]} in {rain_start.strftime("%H:%M WIB")}"""
-    return warning_text
 
 
 if station_name:
