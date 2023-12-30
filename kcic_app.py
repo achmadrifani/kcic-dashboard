@@ -63,8 +63,7 @@ def create_popup(row, df_fct):
             Kelembapan: {df_fct_sta['HU'].iloc[0]}%<br>
             Arah Angin: {wind_caption_dict[df_fct_sta['WD'].iloc[0]]}<br>
             Kecepatan Angin: {df_fct_sta['WS'].iloc[0]} km/h
-            </div>
-        """
+            </div>"""
     return popup_content
 
 def keep_first(series):
