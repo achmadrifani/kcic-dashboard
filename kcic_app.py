@@ -128,7 +128,7 @@ if station_name:
     pwx_time = df_pwx["DATE"].iloc[0] +timedelta(hours=7)
     df_stp = df_stp.loc[df_stp["NAME"] == station_name]
     df_stp['DATE'] = df_stp["DATE"] + timedelta(hours=7)
-    warning_text = make_warning(df_stp)
+    warning_text = make_warning(df_stp.loc[df_stp["DATE"] > datetime.now()])
     df_now = df_stp.resample('30T', on='DATE').agg({'NAME':keep_first,
                                                     'LON':keep_first,
                                                     'LAT':keep_first,
