@@ -125,10 +125,8 @@ if station_name:
     fct_time = df_all_fct["DATE"].iloc[0]
 
     df_pwx = df_pwx.loc[df_pwx["NAME"] == station_name]
-
     pwx_time = df_pwx["DATE"].iloc[0] +timedelta(hours=7)
     df_stp = df_stp.loc[df_stp["NAME"] == station_name]
-
     df_stp['DATE'] = df_stp["DATE"] + timedelta(hours=7)
     warning_text = make_warning(df_stp)
     df_now = df_stp.resample('30T', on='DATE').agg({'NAME':keep_first,
@@ -140,7 +138,6 @@ if station_name:
     df_pwx = df_pwx[['DATE','NAME', 'LON', 'LAT', 'WEATHER']]
     df_now = pd.concat([df_pwx, df_now], ignore_index=True)
     df_now.drop_duplicates(subset=['DATE'], inplace=True, keep='last')
-
     st.write("### Current Weather")
 
     warning_content = f"""
@@ -159,7 +156,7 @@ if station_name:
             time_indicator = (data["DATE"]).strftime("%H:%M WIB")
 
         markdown_content = f"""
-                            <div style="background-color: #d6d0d0; padding: 10px; border-radius: 10px;">
+                            <div style="background-color: #f0f0f0; padding: 10px; border-radius: 10px;">
                             <strong>{time_indicator}</strong><br>
                             <img src="{wx_icon_dict[data['WEATHER']]}" alt="Weather Icon" style="width:50px;height:50px;"><br>
                             {wx_caption_dict[data["WEATHER"]]}<br>
