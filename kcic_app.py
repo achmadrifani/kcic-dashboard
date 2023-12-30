@@ -88,7 +88,7 @@ df_pwx = pd.read_csv(pwx_local_path, sep=";", parse_dates=["DATE"])
 df_ndf = pd.read_csv(ndf_local_path, sep=";", parse_dates=["DATE"])
 df_stp = pd.read_csv(stp_local_path, sep=";", parse_dates=["DATE"])
 gdf_track = gpd.read_file('src/kcic.geojson')
-df_sta = pd.read_csv("src/track_ndf.csv")
+df_sta = pd.read_csv("src/point_kcic.csv")
 
 m = folium.Map(location=[-6.579044952293415, 107.33359554188215], zoom_start=10, max_zoom=12, min_zoom=10,
                max_bounds=True, min_lat=-7.05, max_lat=-5.95, min_lon=106.5, max_lon=108.5)
