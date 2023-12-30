@@ -133,7 +133,7 @@ if station_name:
                                                     'LAT':keep_first,
                                                     'WEATHER' : 'max'})
     df_now.reset_index(col_level="DATE", inplace=True)
-    df_now = df_now.loc[(df_now["DATE"] >= datetime.now()) & (df_now["DATE"] < fct_time)]
+    df_now = df_now.loc[(df_now["DATE"] >= datetime.utcnow()+timedelta(hours=7)) & (df_now["DATE"] < fct_time)]
     df_pwx = df_pwx[['DATE','NAME', 'LON', 'LAT', 'WEATHER']]
     df_now = pd.concat([df_pwx, df_now], ignore_index=True)
     df_now.drop_duplicates(subset=['DATE'], inplace=True, keep='last')
