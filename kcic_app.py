@@ -8,6 +8,7 @@ import os
 import requests
 from ftplib import FTP
 from helper_dict import wx_caption_dict, wind_caption_dict, wx_icon_dict
+import pickle
 
 st.set_page_config(layout="wide")
 NDF_FOLDER = "src/ndf"
@@ -89,6 +90,7 @@ df_ndf = pd.read_csv(ndf_local_path, sep=";", parse_dates=["DATE"])
 df_stp = pd.read_csv(stp_local_path, sep=";", parse_dates=["DATE"])
 gdf_track = gpd.read_file('src/kcic.geojson')
 df_sta = pd.read_csv("src/point_kcic.csv")
+gdf_wind = pickle.load(open("wind_forecast.pkl", "rb"))
 
 m = folium.Map(location=[-6.579044952293415, 107.33359554188215], zoom_start=10, max_zoom=12, min_zoom=10,
                max_bounds=True, min_lat=-7.05, max_lat=-5.95, min_lon=106.5, max_lon=108.5)
