@@ -21,11 +21,13 @@ def download_data():
     pwx_ftp_path = f'/data/kcic/kcic_presentwx.csv'
     stp_ftp_path = f'/data/kcic/kcic_steps.csv'
     ndf_ftp_path = f'/data/kcic/kcic_ndf.csv'
+    warn_ftp_path = f'/data/kcic/kcic_wind_warning.geojson'
 
     # Lokasi lokal untuk menyimpan file yang diunduh
     pwx_local_path = f'src/ndf/kcic_presentwx.csv'
     stp_local_path = f'src/ndf/kcic_steps.csv'
     ndf_local_path = f'src/ndf/kcic_ndf.csv'
+    warn_local_path = f'src/ndf/kcic_wind_warning.geojson'
 
     # Buat koneksi ke FTP server
     ftp = FTP(ftp_host)
@@ -40,6 +42,9 @@ def download_data():
 
     with open(ndf_local_path, 'wb') as local_file:
         ftp.retrbinary(f"RETR {ndf_ftp_path}", local_file.write)
+
+    with open(warn_local_path, 'wb') as local_file:
+        ftp.retrbinary(f"RETR {warn_ftp_path}", local_file.write)
 
     # Tutup koneksi FTP
     ftp.quit()
@@ -82,7 +87,31 @@ def make_warning(df_stp):
         warning_text = f"""⚠️ Expect {wx_caption_dict[wx_max]} in {rain_start.strftime("%H:%M WIB")}"""
     return warning_text
 
-st.header("KCIC Weather Forecast Dashboard")
+def nextf():
+    if st.session_state["slider"] < fsteps[-1]:
+        st.session_state.slider += (fsteps[1] - fsteps[0])
+    else:
+        pass
+    return
+
+def prevf():
+    if st.session_state["slider"] > fsteps[0]:
+        st.session_state.slider -= (fsteps[1] - fsteps[0])
+    else:
+        pass
+    return
+
+def get_fill_color(level):
+    if 0 <= level <= 4:
+        return "green"
+    elif 4 < level <= 7:
+        return "yellow"
+    elif 7 < level <= 10:
+        return "orange"
+    else:
+        return "red"
+
+st.title("KCIC Weather Forecast Dashboard")
 
 pwx_local_path, stp_local_path, ndf_local_path = download_data()
 df_pwx = pd.read_csv(pwx_local_path, sep=";", parse_dates=["DATE"])
@@ -90,11 +119,32 @@ df_ndf = pd.read_csv(ndf_local_path, sep=";", parse_dates=["DATE"])
 df_stp = pd.read_csv(stp_local_path, sep=";", parse_dates=["DATE"])
 gdf_track = gpd.read_file('src/kcic.geojson')
 df_sta = pd.read_csv("src/point_kcic.csv")
-gdf_wind = pickle.load(open("wind_forecast.pkl", "rb"))
+gdf_wind = gpd.read_file("src/ndf/kcic_wind_warning.geojson")
+
+init_time = datetime.strptime(gdf_wind["init"].iloc[0], "%Y-%m-%dT%H:%M:%S")
+fsteps = gdf_wind.columns[2:11].tolist()
+fsteps = [int(x) for x in fsteps]
+
+slcol1, slcol2, slcol3 = st.columns([0.1,0.1,0.8])
+with slcol1:
+    prev_button = st.button("Prev", on_click=prevf, key="sub_one")
+with slcol2:
+    next_button = st.button("Next", on_click=nextf, key="add_one")
+with slcol3:
+    sval = st.select_slider("Wind Warning", options=fsteps, key="slider", value=fsteps[0], format_func=lambda x: f"{init_time + timedelta(hours=int(x)+7):%H:%M WIB}")
+    st.write(f"Wind Warning for {init_time + timedelta(hours=int(sval)+7):%d %b %H:%M WIB}")
+
+gdf_wind["color"] = gdf_wind[str(sval)].apply(lambda x: get_fill_color(x))
 
 m = folium.Map(location=[-6.579044952293415, 107.33359554188215], zoom_start=10, max_zoom=12, min_zoom=10,
                max_bounds=True, min_lat=-7.05, max_lat=-5.95, min_lon=106.5, max_lon=108.5)
-folium.GeoJson(gdf_track).add_to(m)
+folium.GeoJson(gdf_wind,
+               style_function= lambda feature: {
+        'fillColor': feature['properties']['color'],
+        'color': feature['properties']['color'],
+        'weight': 3,
+        'fillOpacity': 0.6
+    }).add_to(m)
 
 for index, row in df_pwx.iterrows():
     popup_content = create_popup(row, df_pwx)
@@ -116,7 +166,6 @@ for index, row in df_pwx.iterrows():
 st_data = st_folium(m, use_container_width=True)
 station_name = st_data['last_object_clicked_popup']
 
-
 if station_name:
     station_name = station_name.split('\n')
     station_name = f"{station_name[0]}"
@@ -129,7 +178,7 @@ if station_name:
     pwx_time = df_pwx["DATE"].iloc[0] +timedelta(hours=7)
     df_stp = df_stp.loc[df_stp["NAME"] == station_name]
     df_stp['DATE'] = df_stp["DATE"] + timedelta(hours=7)
-    warning_text = make_warning(df_stp.loc[df_stp["DATE"]>= datetime.utcnow()+timedelta(hours=7))
+    warning_text = make_warning(df_stp.loc[df_stp["DATE"]>= datetime.utcnow()+timedelta(hours=7)])
     df_now = df_stp.resample('30T', on='DATE').agg({'NAME':keep_first,
                                                     'LON':keep_first,
                                                     'LAT':keep_first,
