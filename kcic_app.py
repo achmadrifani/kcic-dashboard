@@ -132,20 +132,23 @@ with slcol2:
     next_button = st.button("Next", on_click=nextf, key="add_one")
 with slcol3:
     sval = st.select_slider("Wind Warning", options=fsteps, key="slider", value=fsteps[0], format_func=lambda x: f"{init_time + timedelta(hours=int(x)+7):%H:%M WIB}")
-    st.write(f"Wind Warning for {init_time + timedelta(hours=int(sval)+7):%d %b %H:%M WIB}")
+    st.write(f"Wind Risk for {init_time + timedelta(hours=int(sval)+7):%d %b %H:%M WIB}")
 
 gdf_wind["color"] = gdf_wind[str(sval)].apply(lambda x: get_fill_color(x))
 
 m = folium.Map(location=[-6.579044952293415, 107.33359554188215], zoom_start=10, max_zoom=12, min_zoom=10,
                max_bounds=True, min_lat=-7.05, max_lat=-5.95, min_lon=106.5, max_lon=108.5)
-folium.GeoJson(gdf_wind,
-               style_function= lambda feature: {
-        'fillColor': feature['properties']['color'],
-        'color': feature['properties']['color'],
-        'weight': 3,
-        'fillOpacity': 0.6
-    }).add_to(m)
 
+fg_wind = folium.FeatureGroup(name='Wind Risk')
+folium.GeoJson(gdf_wind,
+               style_function=lambda feature: {
+                   'fillColor': feature['properties']['color'],
+                   'color': feature['properties']['color'],
+                   'weight': 3,
+                   'fillOpacity': 0.6
+               }).add_to(fg_wind)
+
+fg_pwx = folium.FeatureGroup(name='Present Weather')
 for index, row in df_pwx.iterrows():
     popup_content = create_popup(row, df_pwx)
     tooltip_content = f"""
@@ -161,9 +164,10 @@ for index, row in df_pwx.iterrows():
     folium.Marker([row['LAT'], row['LON']],
                   popup=folium.Popup(popup_content, max_width=300),
                   tooltip=tooltip_content,
-                  icon=tr_icon).add_to(m)
+                  icon=tr_icon).add_to(fg_pwx)
 
-st_data = st_folium(m, use_container_width=True)
+# layer_control = folium.LayerControl(collapsed=False)
+st_data = st_folium(m, key="fct-map", feature_group_to_add=[fg_wind,fg_pwx], use_container_width=True)#, layer_control=layer_control)
 station_name = st_data['last_object_clicked_popup']
 
 if station_name:
