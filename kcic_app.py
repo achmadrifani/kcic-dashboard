@@ -1,3 +1,4 @@
+import pandas
 import streamlit as st
 from streamlit_folium import st_folium
 import folium
@@ -50,7 +51,8 @@ def download_data():
     ftp.quit()
     return pwx_local_path, stp_local_path, ndf_local_path
 
-def get_all_forecast(station_name, df):
+
+def get_all_forecast(station_name: str, df):
     now = datetime.utcnow()
     df = df[df["DATE"] > now]
     df = df.loc[df["NAME"] == station_name]
@@ -125,14 +127,15 @@ init_time = datetime.strptime(gdf_wind["init"].iloc[0], "%Y-%m-%dT%H:%M:%S")
 fsteps = gdf_wind.columns[2:11].tolist()
 fsteps = [int(x) for x in fsteps]
 
-slcol1, slcol2, slcol3 = st.columns([0.1,0.1,0.8])
-with slcol1:
-    prev_button = st.button("Prev", on_click=prevf, key="sub_one")
-with slcol2:
-    next_button = st.button("Next", on_click=nextf, key="add_one")
-with slcol3:
+slcols1,slcols2 = st.columns(2)
+with slcols1:
     sval = st.select_slider("Wind Warning", options=fsteps, key="slider", value=fsteps[0], format_func=lambda x: f"{init_time + timedelta(hours=int(x)+7):%H:%M WIB}")
     st.write(f"Wind Risk for {init_time + timedelta(hours=int(sval)+7):%d %b %H:%M WIB}")
+    bcol1, bcol2 = st.columns([0.05,0.95],gap="small")
+    with bcol1:
+        prev_button = st.button("Prev", on_click=prevf, key="sub_one")
+    with bcol2:
+        next_button = st.button("Next", on_click=nextf, key="add_one")
 
 gdf_wind["color"] = gdf_wind[str(sval)].apply(lambda x: get_fill_color(x))
 
