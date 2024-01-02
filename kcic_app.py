@@ -74,8 +74,10 @@ def create_popup(row, df_fct):
             </div>"""
     return popup_content
 
+
 def keep_first(series):
     return series.iloc[0]
+
 
 def make_warning(df_stp):
     rain = df_stp.loc[df_stp["WEATHER"] > 4]
@@ -89,6 +91,7 @@ def make_warning(df_stp):
         warning_text = f"""⚠️ Expect {wx_caption_dict[wx_max]} in {rain_start.strftime("%H:%M WIB")}"""
     return warning_text
 
+
 def nextf():
     if st.session_state["slider"] < fsteps[-1]:
         st.session_state.slider += (fsteps[1] - fsteps[0])
@@ -96,12 +99,14 @@ def nextf():
         pass
     return
 
+
 def prevf():
     if st.session_state["slider"] > fsteps[0]:
         st.session_state.slider -= (fsteps[1] - fsteps[0])
     else:
         pass
     return
+
 
 def get_fill_color(level):
     if 0 <= level <= 4:
@@ -112,6 +117,7 @@ def get_fill_color(level):
         return "orange"
     else:
         return "red"
+
 
 st.title("KCIC Weather Forecast Dashboard")
 
@@ -124,14 +130,18 @@ df_sta = pd.read_csv("src/point_kcic.csv")
 gdf_wind = gpd.read_file("src/ndf/kcic_wind_warning.geojson")
 
 init_time = datetime.strptime(gdf_wind["init"].iloc[0], "%Y-%m-%dT%H:%M:%S")
+#calculate hour difference from now to init time
+hour_diff = (datetime.utcnow() - init_time).total_seconds() / 3600
 fsteps = gdf_wind.columns[2:11].tolist()
 fsteps = [int(x) for x in fsteps]
+fsteps = [x for x in fsteps if x >= hour_diff]
 
-slcols1,slcols2 = st.columns(2)
+slcols1, slcols2 = st.columns(2)
 with slcols1:
-    sval = st.select_slider("Wind Warning", options=fsteps, key="slider", value=fsteps[0], format_func=lambda x: f"{init_time + timedelta(hours=int(x)+7):%H:%M WIB}")
-    st.write(f"Wind Risk for {init_time + timedelta(hours=int(sval)+7):%d %b %H:%M WIB}")
-    bcol1, bcol2 = st.columns([0.05,0.95],gap="small")
+    sval = st.select_slider("Wind Warning", options=fsteps, key="slider", value=fsteps[0],
+                            format_func=lambda x: f"{init_time + timedelta(hours=int(x) + 7):%d/%m %H:%M WIB}")
+    st.write(f"Wind Risk for {init_time + timedelta(hours=int(sval) + 7):%d %b %H:%M WIB}")
+    bcol1, bcol2 = st.columns([0.1, 0.9], gap="small")
     with bcol1:
         prev_button = st.button("Prev", on_click=prevf, key="sub_one")
     with bcol2:
@@ -170,7 +180,8 @@ for index, row in df_pwx.iterrows():
                   icon=tr_icon).add_to(fg_pwx)
 
 # layer_control = folium.LayerControl(collapsed=False)
-st_data = st_folium(m, key="fct-map", feature_group_to_add=[fg_wind,fg_pwx], use_container_width=True)#, layer_control=layer_control)
+st_data = st_folium(m, key="fct-map", feature_group_to_add=[fg_wind, fg_pwx],
+                    use_container_width=True,)  # , layer_control=layer_control)
 station_name = st_data['last_object_clicked_popup']
 
 if station_name:
@@ -182,17 +193,17 @@ if station_name:
     fct_time = df_all_fct["DATE"].iloc[0]
 
     df_pwx = df_pwx.loc[df_pwx["NAME"] == station_name]
-    pwx_time = df_pwx["DATE"].iloc[0] +timedelta(hours=7)
+    pwx_time = df_pwx["DATE"].iloc[0] + timedelta(hours=7)
     df_stp = df_stp.loc[df_stp["NAME"] == station_name]
     df_stp['DATE'] = df_stp["DATE"] + timedelta(hours=7)
-    warning_text = make_warning(df_stp.loc[df_stp["DATE"]>= datetime.utcnow()+timedelta(hours=7)])
-    df_now = df_stp.resample('30T', on='DATE').agg({'NAME':keep_first,
-                                                    'LON':keep_first,
-                                                    'LAT':keep_first,
-                                                    'WEATHER' : 'max'})
+    warning_text = make_warning(df_stp.loc[df_stp["DATE"] >= datetime.utcnow() + timedelta(hours=7)])
+    df_now = df_stp.resample('30T', on='DATE').agg({'NAME': keep_first,
+                                                    'LON': keep_first,
+                                                    'LAT': keep_first,
+                                                    'WEATHER': 'max'})
     df_now.reset_index(col_level="DATE", inplace=True)
-    df_now = df_now.loc[(df_now["DATE"] >= datetime.utcnow()+timedelta(hours=7)) & (df_now["DATE"] < fct_time)]
-    df_pwx = df_pwx[['DATE','NAME', 'LON', 'LAT', 'WEATHER']]
+    df_now = df_now.loc[(df_now["DATE"] >= datetime.utcnow() + timedelta(hours=7)) & (df_now["DATE"] < fct_time)]
+    df_pwx = df_pwx[['DATE', 'NAME', 'LON', 'LAT', 'WEATHER']]
     df_now = pd.concat([df_pwx, df_now], ignore_index=True)
     df_now.drop_duplicates(subset=['DATE'], inplace=True, keep='last')
     st.write("### Current Weather")
