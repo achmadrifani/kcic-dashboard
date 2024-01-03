@@ -134,13 +134,13 @@ init_time = datetime.strptime(gdf_wind["init"].iloc[0], "%Y-%m-%dT%H:%M:%S")
 hour_diff = (datetime.utcnow() - init_time).total_seconds() / 3600
 fsteps = gdf_wind.columns[2:11].tolist()
 fsteps = [int(x) for x in fsteps]
-fsteps = [x for x in fsteps if x >= hour_diff]
+fsteps = [x for x in fsteps if x >= hour_diff - 3]
 
 slcols1, slcols2 = st.columns(2)
 with slcols1:
     sval = st.select_slider("Wind Warning", options=fsteps, key="slider", value=fsteps[0],
                             format_func=lambda x: f"{init_time + timedelta(hours=int(x) + 7):%d/%m %H:%M WIB}")
-    st.write(f"Wind Risk for {init_time + timedelta(hours=int(sval) + 7):%d %b %H:%M WIB}")
+    st.write(f"Wind Risk for {init_time + timedelta(hours=int(sval) + 7):%d %b %H:%M WIB} to {init_time + timedelta(hours=int(sval) + 7 + (fsteps[1] - fsteps[0])):%d %b %H:%M WIB}")
     bcol1, bcol2 = st.columns([0.1, 0.9], gap="small")
     with bcol1:
         prev_button = st.button("Prev", on_click=prevf, key="sub_one")
